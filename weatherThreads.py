@@ -146,14 +146,30 @@ def convert_wind_speed_to_m_s(wind_speed_kmh, orig_unit):
     else : 
         return wind_speed_kmh
 
+# Преобразование скорости ветра из км/ч в м/с
+def precipitation_to_text(details, units) :
+    precipitation = ""
+    if  details['precipitation'] > 0 :
+        precipitation += f" осадки {details['precipitation']} {units['precipitation']} "
+    if  details['rain'] > 0 :
+        precipitation += f" дождь {details['rain']} {units['rain']} "
+    if  details['snowfall'] > 0 :
+        precipitation += f" снег {details['snowfall']} {units['snowfall']} "
+
+    if precipitation == '' :
+        precipitation = 'без осадков'
+
+    return precipitation
+
 # запись в базу 
 def save_request(response1, response2):
+    
     try:
         weather = response1['current_weather']
         weather_units = response1['current_weather_units']
 
-        pressure = response2['current']
-        pressure_units = response2['current_units']
+        details = response2['current']
+        details_units = response2['current_units']
         
         wind_direction_angle = weather['winddirection']
         wind_direction_name = wind_direction_from_angle(wind_direction_angle)
@@ -164,8 +180,8 @@ def save_request(response1, response2):
             temperature=weather['temperature'], 
             wind_direction=wind_direction_name,
             wind_speed=convert_wind_speed_to_m_s(weather['windspeed'], weather_units['windspeed']),
-            pressure=convert_pressure_to_mm_hg(pressure['surface_pressure'], pressure_units['surface_pressure']),
-            precipitation="no"  
+            pressure=convert_pressure_to_mm_hg(details['surface_pressure'], details_units['surface_pressure']),
+            precipitation=precipitation_to_text(details, details_units) 
         )
 
         # Использование контекстного менеджера для управления сессией
@@ -184,7 +200,7 @@ def fetch_weather_data(api_url):
     try:
         response = requests.get(api_url)
         if response.status_code == 200:
-            #print(response.json())
+            print(response.json())
             return response.json()
         else:
             logging.warning(f"Ошибка. Код ответа: {response.status_code}")
@@ -207,7 +223,7 @@ def thread_weather_data():
     print("Запущен поток thread_weather_data")
     while not shutdown_event.is_set():
         data1 = fetch_weather_data(API_URL + '&current_weather=true')
-        data2 = fetch_weather_data(API_URL + '&current=surface_pressure')
+        data2 = fetch_weather_data(API_URL + '&current=precipitation,rain,snowfall,surface_pressure')
         if data1 and data2:
             save_request(data1, data2)
             error_count = 0
