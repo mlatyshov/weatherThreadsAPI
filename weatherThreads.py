@@ -32,7 +32,7 @@ def check_input():
 def windows_check_input():
     print("Запущен поток thread_export_to_excel (windows)")
     print("Программа weatherThreads выполняет сбор погодной информации.")
-    print("Ожидается нажатия буквы латинской 'e' для экспорта в Excel или 'q' для выхода")
+    print("Ожидаются нажатия клавиш латинской 'e' для экспорта в Excel или 'q' для выхода")
     while not shutdown_event.is_set():
         if msvcrt.kbhit():
             try :
@@ -54,7 +54,7 @@ def windows_check_input():
 def unix_check_input():
     print("Запущен поток thread_export_to_excel (unix)")
     print("Программа weatherThreads выполняет сбор погодной информации.")
-    print("Ожидается нажатия буквы латинской 'e' для экспорта в Excel или 'q' для выхода")
+    print("Ожидаются нажатия клавиш латинской 'e' для экспорта в Excel или 'q' для выхода")
     while not shutdown_event.is_set():
         readable, _, _ = select.select([sys.stdin], [], [], 1)
         if readable:
@@ -134,7 +134,7 @@ def convert_to_datetime(timestamp_str):
 # преобразование давления из гПа в мм рт. ст.
 def convert_pressure_to_mm_hg(pressure_hpa, orig_unit):
     if orig_unit == 'hPa' :
-        return pressure_hpa * 0.75006375541921
+        return round(pressure_hpa * 0.75006375541921 , 2)
     else :
         return pressure_hpa
 
@@ -142,7 +142,7 @@ def convert_pressure_to_mm_hg(pressure_hpa, orig_unit):
 # Преобразование скорости ветра из км/ч в м/с
 def convert_wind_speed_to_m_s(wind_speed_kmh, orig_unit):
     if orig_unit == 'km/h' :
-        return wind_speed_kmh / 3.6
+        return round(wind_speed_kmh / 3.6 , 2)
     else : 
         return wind_speed_kmh
 
