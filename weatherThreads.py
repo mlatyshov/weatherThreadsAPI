@@ -38,8 +38,10 @@ def windows_check_input():
             try :
                 command = msvcrt.getch().decode()
                 if command.lower() == 'e':  # 'e' для 'export'
+                    print("Экспортирую..")
                     export_to_excel()
                 if command.lower() == 'q':  # 'q' для 'quit'
+                    print("Завершаю работу..")
                     shutdown_event.set()
             except :
                 logging.info("Ошибка в команде")
@@ -130,8 +132,11 @@ def convert_to_datetime(timestamp_str):
 
 
 # преобразование давления из гПа в мм рт. ст.
-def convert_pressure_to_mm_hg(pressure_hpa):
-    return pressure_hpa * 0.75006375541921
+def convert_pressure_to_mm_hg(pressure_hpa, orig_unit):
+    if orig_unit == 'hPa' :
+        return pressure_hpa * 0.75006375541921
+    else :
+        return pressure_hpa
 
 
 # Преобразование скорости ветра из км/ч в м/с
@@ -142,21 +147,24 @@ def convert_wind_speed_to_m_s(wind_speed_kmh, orig_unit):
         return wind_speed_kmh
 
 # запись в базу 
-def save_request(response):
+def save_request(response1, response2):
     try:
-        current_weather = response['current_weather']
-        units = response['current_weather_units']
-        wind_direction_angle = current_weather['winddirection']
-        wind_direction_name = wind_direction_from_angle(wind_direction_angle)
+        weather = response1['current_weather']
+        weather_units = response1['current_weather_units']
 
+        pressure = response2['current']
+        pressure_units = response2['current_units']
+        
+        wind_direction_angle = weather['winddirection']
+        wind_direction_name = wind_direction_from_angle(wind_direction_angle)
+        
         new_record = WeatherData(
             
-            timestamp=convert_to_datetime(current_weather['time']),
-            temperature=current_weather['temperature'], 
+            timestamp=convert_to_datetime(weather['time']),
+            temperature=weather['temperature'], 
             wind_direction=wind_direction_name,
-            wind_speed=convert_wind_speed_to_m_s(current_weather['windspeed'], units['windspeed']),
-            # не получены в JSON, устаревшая документация
-            pressure='0', # convert_pressure_to_mm_hg(current_weather['pressure_msl']),
+            wind_speed=convert_wind_speed_to_m_s(weather['windspeed'], weather_units['windspeed']),
+            pressure=convert_pressure_to_mm_hg(pressure['surface_pressure'], pressure_units['surface_pressure']),
             precipitation="no"  
         )
 
@@ -193,14 +201,15 @@ def thread_weather_data():
     timezone = "Europe/Moscow"
     initial_sleep = 180
 
-    API_URL = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&timezone={timezone}&current_weather=true&surface_pressure"
+    API_URL = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&timezone={timezone}"
     error_count = 0
     sleep = initial_sleep
     print("Запущен поток thread_weather_data")
     while not shutdown_event.is_set():
-        data = fetch_weather_data(API_URL)
-        if data:
-            save_request(data)
+        data1 = fetch_weather_data(API_URL + '&current_weather=true')
+        data2 = fetch_weather_data(API_URL + '&current=surface_pressure')
+        if data1 and data2:
+            save_request(data1, data2)
             error_count = 0
             sleep = initial_sleep
         else:
