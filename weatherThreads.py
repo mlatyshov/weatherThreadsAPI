@@ -200,7 +200,7 @@ def fetch_weather_data(api_url):
     try:
         response = requests.get(api_url)
         if response.status_code == 200:
-            print(response.json())
+            #print(response.json())
             return response.json()
         else:
             logging.warning(f"Ошибка. Код ответа: {response.status_code}")
