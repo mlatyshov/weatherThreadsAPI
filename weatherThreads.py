@@ -31,7 +31,8 @@ def check_input():
 
 def windows_check_input():
     print("Запущен поток thread_export_to_excel (windows)")
-    print("Консоль ожидает ввода буквы 'e' для экспорта в Excel или q для выхода")
+    print("Программа weatherThreads выполняет сбор погодной информации.")
+    print("Ожидается нажатия буквы латинской 'e' для экспорта в Excel или 'q' для выхода")
     while not shutdown_event.is_set():
         if msvcrt.kbhit():
             try :
@@ -50,7 +51,8 @@ def windows_check_input():
 
 def unix_check_input():
     print("Запущен поток thread_export_to_excel (unix)")
-    print("Консоль ожидает ввода буквы 'e' для экспорта в Excel или q для выхода")
+    print("Программа weatherThreads выполняет сбор погодной информации.")
+    print("Ожидается нажатия буквы латинской 'e' для экспорта в Excel или 'q' для выхода")
     while not shutdown_event.is_set():
         readable, _, _ = select.select([sys.stdin], [], [], 1)
         if readable:
@@ -131,10 +133,19 @@ def convert_to_datetime(timestamp_str):
 def convert_pressure_to_mm_hg(pressure_hpa):
     return pressure_hpa * 0.75006375541921
 
+
+# Преобразование скорости ветра из км/ч в м/с
+def convert_wind_speed_to_m_s(wind_speed_kmh, orig_unit):
+    if orig_unit == 'km/h' :
+        return wind_speed_kmh / 3.6
+    else : 
+        return wind_speed_kmh
+
 # запись в базу 
 def save_request(response):
     try:
         current_weather = response['current_weather']
+        units = response['current_weather_units']
         wind_direction_angle = current_weather['winddirection']
         wind_direction_name = wind_direction_from_angle(wind_direction_angle)
 
@@ -143,7 +154,7 @@ def save_request(response):
             timestamp=convert_to_datetime(current_weather['time']),
             temperature=current_weather['temperature'], 
             wind_direction=wind_direction_name,
-            wind_speed=current_weather['windspeed'],
+            wind_speed=convert_wind_speed_to_m_s(current_weather['windspeed'], units['windspeed']),
             # не получены в JSON, устаревшая документация
             pressure='0', # convert_pressure_to_mm_hg(current_weather['pressure_msl']),
             precipitation="no"  
@@ -182,7 +193,7 @@ def thread_weather_data():
     timezone = "Europe/Moscow"
     initial_sleep = 180
 
-    API_URL = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&timezone={timezone}&current_weather=true&pressure"
+    API_URL = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&timezone={timezone}&current_weather=true&surface_pressure"
     error_count = 0
     sleep = initial_sleep
     print("Запущен поток thread_weather_data")
